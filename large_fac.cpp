@@ -4,17 +4,32 @@
 #include <algorithm>
 
 typedef std::vector<uint8_t> Num;
+const auto BASE = 10;
 
 // Little-endian
 Num mul (Num a, Num b);
+Num add (Num a, Num b);
+std::string format(Num n);
+Num fac (Num n);
 
-int main() {
-	Num a = {1, 127, 255};
-	Num b = {100, 101};
-	mul(a, b);
+int main()
+{
+	std::cout << format(fac({7, 8, 9})) << std::endl;
 }
 
-Num mul (Num a, Num b)
+Num fac(Num n)
+{
+	Num a {1};
+	Num b {1};
+	while (b != n) {
+		a = mul(a, b);
+		b = add(b, {1});
+	}
+
+	return a;
+}
+
+Num mul(Num a, Num b)
 {
 	std::vector<Num> rows {b.size(), Num (a.size() + b.size(), 0)};
 
@@ -25,18 +40,45 @@ Num mul (Num a, Num b)
 			uint16_t i = a[x];
 			uint16_t j = b[y];
 			uint16_t k = i * j + carry;
-			carry = k / 256;
-			k -= carry * 256;
+			carry = k / BASE;
+			k -= carry * BASE;
 			rows[y][x+y] = k;
-			printf("Multiply %d by %d = %d, carry %d\n", i, j, k, carry);
 		}
 		rows[y][x+y] = carry;
 	}
 
-	for (auto row : rows) {
-		for (auto c : row) printf("%3d ", c);
-		printf("\n");
+	Num sum {0};
+	for (auto row : rows) sum = add(sum, row);
+	while (sum.back() == 0) sum.pop_back();
+
+	return sum;
+}
+
+Num add(Num a, Num b)
+{	
+	Num n;
+	auto len = std::max(a.size(), b.size());
+	uint16_t carry = 0;
+	
+	for (auto i = 0; i < len; i++) {
+		uint8_t j = i < a.size() ? a[i] : 0;
+		uint8_t k = i < b.size() ? b[i] : 0;
+		uint16_t x = j + k + carry;
+		carry = x / BASE;
+		x -= carry * BASE;
+		n.push_back(x);
 	}
 
-	return {};
+	if (carry > 0) n.push_back(carry);
+
+	return n;
+}
+
+std::string format(Num n)
+{
+	std::string out;
+	for (auto it = n.rbegin(); it != n.rend(); ++it)
+		out.push_back(*it + '0');
+
+	return out;
 }
