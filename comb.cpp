@@ -41,7 +41,7 @@ int nonDivisibleSubset(int k, vector<int> s) {
 
 int main() {
 	vector<int> a;
-	for (int i = 0; i < 100; ++i) a.push_back(i);
+	for (int i = 0; i < 20; ++i) a.push_back(i);
 	auto c = nonDivisibleSubset(4, a);
 	cout << c << endl;
 }
