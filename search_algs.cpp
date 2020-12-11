@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cassert>
+#include <cstring>
 
 using namespace std;
 
@@ -71,36 +72,34 @@ vector<int> kmp_init(string s) {
 	return t;
 }
 
-int search_kmp(string needle, string text) {
-	vector<int> t = kmp_init(needle);
-	auto count = 0;
+int *kmp_init2(const char *s) {
+	int M = strlen(s);
+	int *t = new int[M];
 
-	auto i = 0, j = 0;
-	while (i < text.size()) {
-		if (needle[j] != text[i]) {
-			++i;
-			j = t[j];
+	auto i = 1, j = 0;
+	while (i < M) {
+		if (s[j] == s[i]) {
+			t[i] = j+1;
+			i++;
+			j++;
 		} else {
-			++j;
-			if (j != 0) ++i;
-			if (j == needle.size()) {
-				count++;
-				j = t[j];
-			}
+			if (j == 0) t[i++] = 0;
+			else j = t[j-1];
 		}
 	}
 
-	return count;
+	return t;
 }
 
-int search_kmp2(string pattern, string text) {
+int search_kmp(string pattern, string text) {
+	if (pattern.size() == 0) return 0;
+	
 	auto t = kmp_init(pattern);
 	auto count = 0;
 	for (auto i = 0, j = 0; i < text.size(); ++i, ++j) {
 		if (j == pattern.size()) {
 			j = t[j];
 			count++;
-			continue;
 		}
 		
 		while ((j >= 0) && (text[i] != pattern[j])) j = t[j];
@@ -109,6 +108,14 @@ int search_kmp2(string pattern, string text) {
 	return count;
 }
 
+/*
+int search_kmp3(char *pattern, char *text) {
+	auto M = strlen(pattern), N = strlen(text);
+	if (M == 0) return 0;
+
+	while (
+*/
+
 double elapsed(chrono::time_point<chrono::high_resolution_clock> start) {
 	auto stop = chrono::high_resolution_clock::now();
 	auto dur = chrono::duration_cast<chrono::microseconds>(stop - start);
@@ -116,6 +123,10 @@ double elapsed(chrono::time_point<chrono::high_resolution_clock> start) {
 }
 
 int main(int argc, char *argv[]) {
+	string pat {"10100111"};
+	auto t = kmp_init2(pat.c_str());
+	for (int i = 0; i < 8; ++i) printf("%d: %d\n", i, t[i]);
+
 	if (argc < 3) {
 		printf("Not enough args\n");
 		exit(1);
@@ -155,7 +166,6 @@ int main(int argc, char *argv[]) {
 	cout << "[Brute] Test: " << search_brute(needle, text) << endl;
 	cout << "[Brute2] Test: " << search_brute2(needle, text) << endl;
 	cout << "[KMP] Test: " << search_kmp(needle, text) << endl;
-	cout << "[KMP2] Test: " << search_kmp2(needle, text) << endl;
 	cout << endl;
 
 	//------------
@@ -183,10 +193,4 @@ int main(int argc, char *argv[]) {
 	for (auto word : words) total += search_kmp(word, text);
 	cout << "[KMP] Total: " << total << endl;
 	cout << "[KMP] Time: " << elapsed(start) << endl << endl;
-	
-	start = chrono::high_resolution_clock::now();	
-	total = 0;
-	for (auto word : words) total += search_kmp2(word, text);
-	cout << "[KMP2] Total: " << total << endl;
-	cout << "[KMP2] Time: " << elapsed(start) << endl << endl;
 }
