@@ -72,25 +72,6 @@ vector<int> kmp_init(string s) {
 	return t;
 }
 
-int *kmp_init2(const char *s) {
-	int M = strlen(s);
-	int *t = new int[M];
-
-	auto i = 1, j = 0;
-	while (i < M) {
-		if (s[j] == s[i]) {
-			t[i] = j+1;
-			i++;
-			j++;
-		} else {
-			if (j == 0) t[i++] = 0;
-			else j = t[j-1];
-		}
-	}
-
-	return t;
-}
-
 int search_kmp(string pattern, string text) {
 	if (pattern.size() == 0) return 0;
 	
@@ -108,14 +89,6 @@ int search_kmp(string pattern, string text) {
 	return count;
 }
 
-/*
-int search_kmp3(char *pattern, char *text) {
-	auto M = strlen(pattern), N = strlen(text);
-	if (M == 0) return 0;
-
-	while (
-*/
-
 double elapsed(chrono::time_point<chrono::high_resolution_clock> start) {
 	auto stop = chrono::high_resolution_clock::now();
 	auto dur = chrono::duration_cast<chrono::microseconds>(stop - start);
@@ -123,10 +96,6 @@ double elapsed(chrono::time_point<chrono::high_resolution_clock> start) {
 }
 
 int main(int argc, char *argv[]) {
-	string pat {"10100111"};
-	auto t = kmp_init2(pat.c_str());
-	for (int i = 0; i < 8; ++i) printf("%d: %d\n", i, t[i]);
-
 	if (argc < 3) {
 		printf("Not enough args\n");
 		exit(1);
