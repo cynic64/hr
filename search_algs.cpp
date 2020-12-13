@@ -90,51 +90,49 @@ int search_kmp(string pattern, string text) {
 	return count;
 }
 
-// Index with [j][c], where j is the index of the mismatched character and c is
-// the character that was received instead
-vector<array<int, 256>> bm_init(string pattern) {
-	int M = pattern.size();
-	vector<array<int, 256>> t(M + 1);
+// Index with whatever character mismatched
+array<size_t, 256> init_bm(string pattern) {
+	auto M = pattern.size();
+	array<size_t, 256> v;
 
-	for (auto j = 0; j < M + 1; ++j) {
-		for (auto c = 0; c < 256; ++c) {
-			auto k = 1;
-			// Keep increasing K until a match is found
-			for (; k <= M; ++k) {
-				auto ok = true;
-				for (auto i = max(0, j-k); i < M-k-1 && ok; ++i) {
-					if (i+k == j) ok &= pattern[i] == (char) c;
-					else ok &= pattern[i] == pattern[i+k];
-				}
-				if (ok) break;
+	for (auto c = 0; c < 256; ++c) {
+		auto set = false;
+		for (auto i = 0; i < M && !set; ++i) {
+			if (pattern[M-i-1] == (char) c) {
+				v[c] = i+1;
+				set = true;
 			}
-			
-			t[j][c] = k;
 		}
+		if (!set) v[c] = M;
 	}
 
-	return t;
+	return v;
 }
 
 int search_bm(string pattern, string text) {
 	auto M = pattern.size(), N = text.size();
-	auto t = bm_init(pattern);
+	if (M == 0 || M > N) return 0;
 
-	if (N < M) return 0;
-
+	auto t = init_bm(pattern);
 	auto count = 0;
 
-	for (auto i = 0; i <= N - M;) {
-		int j = M - 1;
-		while (text[i+j] == pattern[j] && j >= 0) j--;
+	auto i = M - 1, j = M - 1;
+	for (;;) {
+		while (text[i] != pattern[j]) {
+			auto k = t[pattern[j]];
+			i += (M-j > k) ? M-j : k;
+			if (i > N) return count;
+			j = M-1;
+		}
 
-		if (j == -1) {
+		if (j == 0) {
 			++count;
-			i += t[0][(uint8_t) pattern[0]];
-		} else i += t[j][(uint8_t) pattern[j]];
-	}
+			j = M;
+			i += 2*M;
+		}
 
-	return count;
+		j--; i--;
+	}
 }
 
 double elapsed(chrono::time_point<chrono::high_resolution_clock> start) {
@@ -184,6 +182,7 @@ int main(int argc, char *argv[]) {
 	cout << "[Brute2] Test: " << search_brute2(needle, text) << endl;
 	cout << "[KMP] Test: " << search_kmp(needle, text) << endl;
 	cout << "[BM] Test: " << search_bm(needle, text) << endl;
+	cout << "[BM2] Test: " << search_bm2(needle, text) << endl;
 	cout << endl;
 
 	//------------
@@ -217,5 +216,10 @@ int main(int argc, char *argv[]) {
 	for (auto word : words) total += search_bm(word, text);
 	cout << "[BM] Total: " << total << endl;
 	cout << "[BM] Time: " << elapsed(start) << endl << endl;
-
+	
+	start = chrono::high_resolution_clock::now();	
+	total = 0;
+	for (auto word : words) total += search_bm(word, text);
+	cout << "[BM2] Total: " << total << endl;
+	cout << "[BM2] Time: " << elapsed(start) << endl << endl;
 }
