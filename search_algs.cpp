@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cassert>
 #include <cstring>
+#include <array>
 
 using namespace std;
 
@@ -89,6 +90,53 @@ int search_kmp(string pattern, string text) {
 	return count;
 }
 
+// Index with [j][c], where j is the index of the mismatched character and c is
+// the character that was received instead
+vector<array<int, 256>> bm_init(string pattern) {
+	int M = pattern.size();
+	vector<array<int, 256>> t(M + 1);
+
+	for (auto j = 0; j < M + 1; ++j) {
+		for (auto c = 0; c < 256; ++c) {
+			auto k = 1;
+			// Keep increasing K until a match is found
+			for (; k <= M; ++k) {
+				auto ok = true;
+				for (auto i = max(0, j-k); i < M-k-1 && ok; ++i) {
+					if (i+k == j) ok &= pattern[i] == (char) c;
+					else ok &= pattern[i] == pattern[i+k];
+				}
+				if (ok) break;
+			}
+			
+			t[j][c] = k;
+		}
+	}
+
+	return t;
+}
+
+int search_bm(string pattern, string text) {
+	auto M = pattern.size(), N = text.size();
+	auto t = bm_init(pattern);
+
+	if (N < M) return 0;
+
+	auto count = 0;
+
+	for (auto i = 0; i <= N - M;) {
+		int j = M - 1;
+		while (text[i+j] == pattern[j] && j >= 0) j--;
+
+		if (j == -1) {
+			++count;
+			i += t[0][(uint8_t) pattern[0]];
+		} else i += t[j][(uint8_t) pattern[j]];
+	}
+
+	return count;
+}
+
 double elapsed(chrono::time_point<chrono::high_resolution_clock> start) {
 	auto stop = chrono::high_resolution_clock::now();
 	auto dur = chrono::duration_cast<chrono::microseconds>(stop - start);
@@ -135,6 +183,7 @@ int main(int argc, char *argv[]) {
 	cout << "[Brute] Test: " << search_brute(needle, text) << endl;
 	cout << "[Brute2] Test: " << search_brute2(needle, text) << endl;
 	cout << "[KMP] Test: " << search_kmp(needle, text) << endl;
+	cout << "[BM] Test: " << search_bm(needle, text) << endl;
 	cout << endl;
 
 	//------------
@@ -162,4 +211,11 @@ int main(int argc, char *argv[]) {
 	for (auto word : words) total += search_kmp(word, text);
 	cout << "[KMP] Total: " << total << endl;
 	cout << "[KMP] Time: " << elapsed(start) << endl << endl;
+	
+	start = chrono::high_resolution_clock::now();	
+	total = 0;
+	for (auto word : words) total += search_bm(word, text);
+	cout << "[BM] Total: " << total << endl;
+	cout << "[BM] Time: " << elapsed(start) << endl << endl;
+
 }
