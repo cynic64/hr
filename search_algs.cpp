@@ -90,21 +90,17 @@ int search_kmp(string pattern, string text) {
 	return count;
 }
 
+// Only works if all patterns are the same length
+int multi_miller(vector<string> patterns, string text) {
+	return 0;
+}	
+
 // Index with whatever character mismatched
 array<size_t, 256> init_bm(string pattern) {
 	auto M = pattern.size();
 	array<size_t, 256> v;
-
-	for (auto c = 0; c < 256; ++c) {
-		auto set = false;
-		for (auto i = 0; i < M && !set; ++i) {
-			if (pattern[M-i-1] == (char) c) {
-				v[c] = i+1;
-				set = true;
-			}
-		}
-		if (!set) v[c] = M;
-	}
+	for (auto i = 0; i < 256; ++i) v[i] = M;
+	for (auto i = 0; i < M; ++i) v[pattern[i]] = M-i-1;
 
 	return v;
 }
@@ -133,6 +129,40 @@ int search_bm(string pattern, string text) {
 
 		j--; i--;
 	}
+}
+
+// bm2 is the version in Sedgewick's book (plus a bugfix...)
+// It's really slow.
+// Only returns the index of the first result
+size_t search_bm2(const char* pattern, const char* text, size_t start_pos) {
+	size_t i, j, M = strlen(pattern), N = strlen(text);
+	if (start_pos + M > N) return N;
+	auto t = init_bm(pattern);
+
+	for (i = start_pos + M-1, j = M-1; ; --i, --j) {
+		while (text[i] != pattern[j]) {
+			auto k = t[pattern[j]];
+			i += (M-j > k) ? M-j : k;
+			if (i >= N) return N;
+			j = M-1;
+		}
+
+		if (j == 0) break;
+	}
+
+	return i+1;
+}
+
+// Returns count by calling search_bm2 over and over
+int search_bm2_all(string pattern, string text) {
+	auto count = 0;
+	const char *p = pattern.c_str(), *t = text.c_str();
+	auto i = search_bm2(p, t, 0);
+	while (i < text.size()) {
+		++count;
+		i = search_bm2(p, t, i+1);
+	}
+	return count;
 }
 
 double elapsed(chrono::time_point<chrono::high_resolution_clock> start) {
@@ -167,14 +197,11 @@ int main(int argc, char *argv[]) {
 
 	cout << "Read " << text.size() << " Chars" << endl;
 
-	auto last = 0;
-	auto pos = text.find(' ');
+	cout << "Finds 'and' at: " << search_bm2("and", text.c_str(), 0) << endl;
+
 	vector<string> words;
-	while (pos != string::npos && words.size() < 5000) {
-		auto word = text.substr(last, (pos-last));
-		if (word.size() && find(words.begin(), words.end(), word) == words.end()) words.push_back(word);
-		last = pos+1;
-		pos = text.find(' ', pos+1);
+	for (auto i = 0; i < text.size() && words.size() < 100; ++i) {
+		words.push_back(text.substr(i, 3));
 	}
 
 	cout << "[Basic] Test: " << search_basic(needle, text) << endl;
@@ -182,7 +209,7 @@ int main(int argc, char *argv[]) {
 	cout << "[Brute2] Test: " << search_brute2(needle, text) << endl;
 	cout << "[KMP] Test: " << search_kmp(needle, text) << endl;
 	cout << "[BM] Test: " << search_bm(needle, text) << endl;
-	cout << "[BM2] Test: " << search_bm2(needle, text) << endl;
+	cout << "[BM2] Test: " << search_bm2_all(needle, text) << endl;
 	cout << endl;
 
 	//------------
@@ -192,6 +219,12 @@ int main(int argc, char *argv[]) {
 	for (auto word : words) total += search_basic(word, text);
 	cout << "[Basic] Total: " << total << endl;
 	cout << "[Basic] Time: " << elapsed(start) << endl << endl;
+	
+	start = chrono::high_resolution_clock::now();	
+	total = 0;
+	for (auto word : words) total += search_bm(word, text);
+	cout << "[BM] Total: " << total << endl;
+	cout << "[BM] Time: " << elapsed(start) << endl << endl;
 
 	start = chrono::high_resolution_clock::now();	
 	total = 0;
@@ -210,16 +243,4 @@ int main(int argc, char *argv[]) {
 	for (auto word : words) total += search_kmp(word, text);
 	cout << "[KMP] Total: " << total << endl;
 	cout << "[KMP] Time: " << elapsed(start) << endl << endl;
-	
-	start = chrono::high_resolution_clock::now();	
-	total = 0;
-	for (auto word : words) total += search_bm(word, text);
-	cout << "[BM] Total: " << total << endl;
-	cout << "[BM] Time: " << elapsed(start) << endl << endl;
-	
-	start = chrono::high_resolution_clock::now();	
-	total = 0;
-	for (auto word : words) total += search_bm(word, text);
-	cout << "[BM2] Total: " << total << endl;
-	cout << "[BM2] Time: " << elapsed(start) << endl << endl;
 }
