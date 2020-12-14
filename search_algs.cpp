@@ -117,14 +117,14 @@ int search_bm(string pattern, string text) {
 		while (text[i] != pattern[j]) {
 			auto k = t[pattern[j]];
 			i += (M-j > k) ? M-j : k;
-			if (i > N) return count;
+			if (i >= N) return count;
 			j = M-1;
 		}
 
 		if (j == 0) {
 			++count;
 			j = M;
-			i += 2*M;
+			i += M-1 + t[pattern[0]] + 2;
 		}
 
 		j--; i--;
