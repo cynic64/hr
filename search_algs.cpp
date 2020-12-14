@@ -23,9 +23,9 @@ int search_basic(string needle, string text) {
 
 int search_brute(string needle, string text) {
 	auto c = 0;
-	for (auto i = 0; i < text.size(); ++i) {
+	for (size_t i = 0; i < text.size(); ++i) {
 		auto ok = true;
-		for (auto j = 0; j < needle.size(); ++j) {
+		for (size_t j = 0; j < needle.size(); ++j) {
 			if (text[i+j] != needle[j]) {
 				ok = false;
 				break;
@@ -40,9 +40,10 @@ int search_brute(string needle, string text) {
 int search_brute2(string needle, string text) {
 	if (needle.size() == 0) return 0;
 	
-	auto i = 0, c = 0;
+	size_t i = 0;
+	auto c = 0;
 	while (i < text.size()) {
-		auto j = 0;
+		size_t j = 0;
 		for (; j < needle.size() && i < text.size(); i++, j++) {
 			while (text[i] != needle[j] && i < text.size()) {
 				i = i-j + 1;
@@ -58,7 +59,7 @@ int search_brute2(string needle, string text) {
 vector<int> kmp_init(string s) {
 	vector<int> t(s.size()+1, 0);
 	t[0] = -1;
-	auto i = 1, j = 0;
+	size_t i = 1, j = 0;
 	while (i < s.size()) {
 		if (s[i] == s[j]) t[++i] = ++j;
 		else {
@@ -78,8 +79,9 @@ int search_kmp(string pattern, string text) {
 	
 	auto t = kmp_init(pattern);
 	auto count = 0;
-	for (auto i = 0, j = 0; i < text.size(); ++i, ++j) {
-		if (j == pattern.size()) {
+	size_t i; int j;
+	for (i = 0, j = 0; i < text.size(); ++i, ++j) {
+		if ((size_t) j == pattern.size()) {
 			j = t[j];
 			count++;
 		}
@@ -99,8 +101,8 @@ int multi_miller(vector<string> patterns, string text) {
 array<size_t, 256> init_bm(string pattern) {
 	auto M = pattern.size();
 	array<size_t, 256> v;
-	for (auto i = 0; i < 256; ++i) v[i] = M;
-	for (auto i = 0; i < M; ++i) v[pattern[i]] = M-i-1;
+	for (size_t i = 0; i < 256; ++i) v[i] = M;
+	for (size_t i = 0; i < M; ++i) v[pattern[i]] = M-i-1;
 
 	return v;
 }
@@ -112,23 +114,20 @@ int search_bm(string pattern, string text) {
 	auto t = init_bm(pattern);
 	auto count = 0;
 
-	auto i = M - 1, j = M - 1;
-	for (;;) {
-		while (text[i] != pattern[j]) {
-			auto k = t[pattern[j]];
-			i += (M-j > k) ? M-j : k;
-			if (i >= N) return count;
-			j = M-1;
+	size_t i = M - 1;
+	while (i < N) {
+		if (text[i] == pattern[M-1]) {
+			size_t j = 1;
+			for (; j < M; ++j) {
+				if (text[i-j] != pattern[M-1-j]) break;
+			}
+			if (j == M) ++count;
+			i++;
 		}
-
-		if (j == 0) {
-			++count;
-			j = M;
-			i += M-1 + t[pattern[0]] + 2;
-		}
-
-		j--; i--;
+		i += t[text[i]];
 	}
+
+	return count;
 }
 
 // bm2 is the version in Sedgewick's book (plus a bugfix...)
@@ -200,8 +199,8 @@ int main(int argc, char *argv[]) {
 	cout << "Finds 'and' at: " << search_bm2("and", text.c_str(), 0) << endl;
 
 	vector<string> words;
-	for (auto i = 0; i < text.size() && words.size() < 100; ++i) {
-		words.push_back(text.substr(i, 3));
+	for (size_t i = 0; i < text.size() && words.size() < 100; ++i) {
+		words.push_back(text.substr(i, 5));
 	}
 
 	cout << "[Basic] Test: " << search_basic(needle, text) << endl;
