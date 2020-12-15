@@ -6,6 +6,8 @@
 #include <cassert>
 #include <cstring>
 #include <array>
+#include <cmath>
+#include <stdexcept>
 
 using namespace std;
 
@@ -92,9 +94,74 @@ int search_kmp(string pattern, string text) {
 	return count;
 }
 
-// Only works if all patterns are the same length
-int multi_miller(vector<string> patterns, string text) {
-	return 0;
+class RKHasher {
+public:
+	RKHasher(uint64_t length, uint64_t d = 32, uint64_t q = 33554393)
+		: state(0), d(d), q(q) {
+		dM = 1;
+		for (size_t i = 0; i < length-1; ++i) dM = dM*d % q;
+	}
+
+	static RKHasher from_text(string text) {
+		auto hasher = RKHasher(text.size());
+		for (auto c: text) hasher.adjust(0, c);
+
+		return hasher;
+	}
+
+	// Given whatever character was first (prev) and what character will
+	// become last, adjusts the hash.
+	void adjust(uint64_t prev, uint64_t next) {
+		state = ((state+d*q - dM*prev) * d + next) % q;
+	}
+
+	uint64_t state;
+
+private:
+	uint64_t d;
+	uint64_t q;
+	uint64_t dM;
+};
+
+int search_rk(string pattern, string text) {
+	auto M = pattern.size(), N = text.size();
+	if (M == 0 || M > N) return 0;
+
+	auto p_hash = RKHasher::from_text(pattern).state;
+	auto text_hasher = RKHasher::from_text(text.substr(0, M));
+
+	auto count = 0;
+	if (p_hash == text_hasher.state) ++count;
+
+	for (size_t i = 0; i < N-M; ++i) {
+		text_hasher.adjust(text[i], text[i+M]);
+		if (p_hash == text_hasher.state) ++count;
+	}
+
+	return count;
+}
+
+int search_rk_multi(vector<string> patterns, string text) {
+	auto M = patterns[0].size(), N = text.size();
+	for (auto p : patterns) {
+		if (p.size() != M)
+			throw runtime_error("Pattern sizes don't match!");
+	}
+
+	vector<uint64_t> p_hashes;
+	for (auto p : patterns)
+		p_hashes.push_back(RKHasher::from_text(p).state);
+
+	auto text_hasher = RKHasher::from_text(text.substr(0, M));
+
+	auto count = std::count(p_hashes.begin(), p_hashes.end(), text_hasher.state);
+
+	for (size_t i = 0; i < N-M; ++i) {
+		text_hasher.adjust(text[i], text[i+M]);
+		count += std::count(p_hashes.begin(), p_hashes.end(), text_hasher.state);
+	}
+
+	return count;
 }	
 
 // Index with whatever character mismatched
@@ -124,7 +191,7 @@ int search_bm(string pattern, string text) {
 			if (j == M) ++count;
 			i++;
 		}
-		i += t[text[i]];
+		i += t[(uint8_t) text[i]];
 	}
 
 	return count;
@@ -196,11 +263,9 @@ int main(int argc, char *argv[]) {
 
 	cout << "Read " << text.size() << " Chars" << endl;
 
-	cout << "Finds 'and' at: " << search_bm2("and", text.c_str(), 0) << endl;
-
 	vector<string> words;
 	for (size_t i = 0; i < text.size() && words.size() < 100; ++i) {
-		words.push_back(text.substr(i, 5));
+		words.push_back(text.substr(i, 10));
 	}
 
 	cout << "[Basic] Test: " << search_basic(needle, text) << endl;
@@ -209,6 +274,8 @@ int main(int argc, char *argv[]) {
 	cout << "[KMP] Test: " << search_kmp(needle, text) << endl;
 	cout << "[BM] Test: " << search_bm(needle, text) << endl;
 	cout << "[BM2] Test: " << search_bm2_all(needle, text) << endl;
+	cout << "[RK] Test: " << search_rk(needle, text) << endl;
+	cout << "[RK Multi] Test: " << search_rk_multi({needle}, text) << endl;
 	cout << endl;
 
 	//------------
@@ -224,6 +291,17 @@ int main(int argc, char *argv[]) {
 	for (auto word : words) total += search_bm(word, text);
 	cout << "[BM] Total: " << total << endl;
 	cout << "[BM] Time: " << elapsed(start) << endl << endl;
+
+	start = chrono::high_resolution_clock::now();	
+	total = 0;
+	for (auto word : words) total += search_rk(word, text);
+	cout << "[RK] Total: " << total << endl;
+	cout << "[RK] Time: " << elapsed(start) << endl << endl;
+
+	start = chrono::high_resolution_clock::now();	
+	total = search_rk_multi(words, text);
+	cout << "[RK Multi] Total: " << total << endl;
+	cout << "[RK Multi] Time: " << elapsed(start) << endl << endl;
 
 	start = chrono::high_resolution_clock::now();	
 	total = 0;
