@@ -3,13 +3,15 @@
 #include <list>
 #include <cstring>
 #include <algorithm>
+#include <unordered_map>
 
 const auto ALPH = 26;
 
 struct Node {
 	Node(char letter, bool is_dict)
 		: letter(letter), is_dict(is_dict),
-		  suffix(nullptr), dict_suffix(nullptr), child_count(0) {}
+		  suffix(nullptr), dict_suffix(nullptr),
+		  child_count(0), children({0}) {}
 
 	void print(int level = 0, bool only_self = false) {
 		for (auto i = 0; i < level; ++i) printf("    ");
@@ -57,12 +59,20 @@ struct Node {
 		return children[idx]->get(s + 1);
 	}
 
+	void calculate_dict_suffix(std::unordered_map<Node*, Node*> cache) {
+		Node* result;
+		if (suffix == nullptr) result = nullptr;
+		if (suffix != nullptr && suffix->is_dict) result = suffix;
+		return suffix->get_dict_suffix();
+	}
+
 	char letter;
 
 	// Whether this node is in the dictionary or not
 	bool is_dict;
 	// Pointer to the node that is the longest complete suffix of this
-	// node, or, if none, the root node
+	// node, or, if none, the root node. The root node itself has a suffix
+	// of nullptr.
 	Node* suffix;
 	// Same as above, with the restriction of being a dictionary suffix. If
 	// there is none, will be NULL.
@@ -93,11 +103,11 @@ public:
 	// Caluclates all links between nodes
 	void init() {
 		find_suffixes();
+		find_dict_suffixes();
 	}
 
 private:
 	void find_suffixes() {
-		printf("Traversing\n");
 		std::list<Node*> queue {root};
 		while (!queue.empty()) {
 			auto n = queue.front(); queue.pop_front();
@@ -114,15 +124,28 @@ private:
 					continue;
 				}
 
-				auto extended_suffix = n->suffix->children[c->letter];
-				auto root_suffix = root->children[c->letter];
+				auto idx = c->letter - 'a';
+				auto extended_suffix = n->suffix->children[idx];
+				auto root_suffix = root->children[idx];
 				if (extended_suffix) c->suffix = extended_suffix;
 				else if (root_suffix) c->suffix = root_suffix;
 				else c->suffix = root;
 			}
 		}
+	}
 
-		printf("Done traversing\n");
+	void find_dict_suffixes() {
+		std::list<Node*> queue {root};
+
+		while (!queue.empty()) {
+			auto n = queue.front(); queue.pop_front();
+
+			if (n->child_count == 0) continue;
+			for (auto c : n->children) {
+				if (!c) continue;
+				queue.push_back(c);
+			}
+		}
 	}
 
 	Node *root;
