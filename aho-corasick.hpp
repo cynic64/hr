@@ -1,4 +1,5 @@
 #include <array>
+#include <vector>
 #include <string>
 #include <list>
 #include <cstring>
@@ -8,23 +9,24 @@
 const auto ALPH = 26;
 
 struct Node {
-	Node(char letter, bool is_dict)
-		: letter(letter), is_dict(is_dict),
+	Node(char letter, std::string fullname, bool is_dict)
+		: letter(letter), fullname(fullname), is_dict(is_dict),
 		  suffix(nullptr), dict_suffix(nullptr),
 		  child_count(0), children({0}) {}
 
 	void print(int level = 0, bool only_self = false) {
 		for (auto i = 0; i < level; ++i) printf("    ");
 
-		printf("I am %c. ", letter);
-		if (is_dict) printf("I am in the dictionary. ");
+		printf("I am '%s'(%c). dict: %s, suffix: '%s', dict_suffix: '%s'. ",
+		       fullname.c_str(), letter, is_dict ? "yes" : "no",
+		       suffix ? suffix->fullname.c_str() : "NULL", dict_suffix ? dict_suffix->fullname.c_str() : "NULL");
 
 		if (only_self || child_count == 0) {
 			printf("\n");
 			return;
 		}
 
-		printf("Here are my %d children:\n", child_count);
+		printf("Have %d children:\n", child_count);
 		
 		for (auto c : children) {
 			if (c != nullptr) {
@@ -32,22 +34,25 @@ struct Node {
 				c->print(level + 1);
 			}
 		}
+		printf("\n");
 	}
 
-	void insert(const char* s) {
+	void insert(const char* s, std::string fullname) {
 		if (strlen(s) == 0) {
 			is_dict = true;
+			this->fullname = fullname;
 			return;
 		}
 
 		char c = s[0];
 		auto idx = c-'a';
 		if (!children[idx]) {
-			children[idx] = new Node(c, false);
+			auto child_name = fullname.substr(0, fullname.size() - strlen(s) + 1);
+			children[idx] = new Node(c, child_name, false);
 			++child_count;
 		}
 
-		children[idx]->insert(s + 1);
+		children[idx]->insert(s + 1, fullname);
 	}
 
 	Node* get(const char* s) {
@@ -59,14 +64,30 @@ struct Node {
 		return children[idx]->get(s + 1);
 	}
 
-	void calculate_dict_suffix(std::unordered_map<Node*, Node*> cache) {
-		Node* result;
-		if (suffix == nullptr) result = nullptr;
-		if (suffix != nullptr && suffix->is_dict) result = suffix;
-		return suffix->get_dict_suffix();
+	// Returns all nodes that are suffixes of the current node and are in
+	// the dictionary, including the current node if it is in the
+	// dictionary.
+	std::vector<Node*> matches() {
+		std::vector<Node*> results;
+
+		if (dict_suffix) results = dict_suffix->matches();
+		if (is_dict) results.push_back(this);
+
+		return results;
+	}
+
+	// Extends the current node to be the longest possible match ending in
+	// c. If c is not one of the node's direct children, recursively checks
+	// suffixes until one that matches is found or the root node is
+	// encountered.
+	Node* extend(char c) {
+		if (children[c-'a']) return children[c-'a'];
+		if (fullname == "") return this;
+		return suffix->extend(c);
 	}
 
 	char letter;
+	std::string fullname;
 
 	// Whether this node is in the dictionary or not
 	bool is_dict;
@@ -85,7 +106,15 @@ struct Node {
 class Trie {
 public:
 	Trie() {
-		root = new Node('!', false);
+		root = new Node('!', "", false);
+	}
+
+	Trie(std::vector<std::string> entries) {
+		root = new Node('!', "", false);
+
+		for (auto entry : entries) insert(entry.c_str());
+
+		init();
 	}
 
 	void print() {
@@ -93,7 +122,7 @@ public:
 	}
 
 	void insert(const char* s) {
-		root->insert(s);
+		root->insert(s, s);
 	}
 
 	Node* get(const char* s) {
@@ -105,6 +134,8 @@ public:
 		find_suffixes();
 		find_dict_suffixes();
 	}
+
+	Node *root;
 
 private:
 	void find_suffixes() {
@@ -140,13 +171,39 @@ private:
 		while (!queue.empty()) {
 			auto n = queue.front(); queue.pop_front();
 
-			if (n->child_count == 0) continue;
-			for (auto c : n->children) {
-				if (!c) continue;
-				queue.push_back(c);
+			if (n->child_count > 0) {
+				for (auto c : n->children) {
+					if (!c) continue;
+					queue.push_back(c);
+				}
 			}
+
+			if (n == root) continue;
+
+			if (n->suffix == root) n->dict_suffix = nullptr;
+			else if (n->suffix->is_dict) n->dict_suffix = n->suffix;
+			else if (n->suffix->dict_suffix == nullptr) n->dict_suffix = nullptr;
+			else n->dict_suffix = n->suffix->dict_suffix;
+
 		}
 	}
-
-	Node *root;
 };
+
+std::unordered_map<std::string, int> ac_count(std::vector<std::string> patterns, std::string text) {
+	Trie trie(patterns);
+	trie.print();
+	std::unordered_map<std::string, int> counts;
+
+	auto n = trie.root;
+	auto i = 0;
+	for (auto c : text) {
+		n = n->extend(c);
+		for (auto m : n->matches()) {
+			counts[m->fullname]++;
+			printf("Matched %s at idx %d\n", m->fullname.c_str(), i);
+		}
+		++i;
+	}
+
+	return counts;
+}

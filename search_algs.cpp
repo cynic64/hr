@@ -8,6 +8,9 @@
 #include <array>
 #include <cmath>
 #include <stdexcept>
+#include <numeric>
+
+#include "aho-corasick.hpp"
 
 using namespace std;
 
@@ -264,18 +267,25 @@ int main(int argc, char *argv[]) {
 	cout << "Read " << text.size() << " Chars" << endl;
 
 	vector<string> words;
-	for (size_t i = 0; i < text.size() && words.size() < 100; ++i) {
-		words.push_back(text.substr(i, 10));
+	for (size_t i = 0; i < text.size() - 2 && words.size() < 19;) {
+		auto word = text.substr(i, 4);
+		cout << "Word: " << word << endl;
+		if (find(words.begin(), words.end(), word) == words.end())
+			words.push_back(word);
+		i += 2;
 	}
 
 	cout << "[Basic] Test: " << search_basic(needle, text) << endl;
+	/*
 	cout << "[Brute] Test: " << search_brute(needle, text) << endl;
 	cout << "[Brute2] Test: " << search_brute2(needle, text) << endl;
 	cout << "[KMP] Test: " << search_kmp(needle, text) << endl;
 	cout << "[BM] Test: " << search_bm(needle, text) << endl;
 	cout << "[BM2] Test: " << search_bm2_all(needle, text) << endl;
-	cout << "[RK] Test: " << search_rk(needle, text) << endl;
-	cout << "[RK Multi] Test: " << search_rk_multi({needle}, text) << endl;
+	*/
+	//cout << "[RK] Test: " << search_rk(needle, text) << endl;
+	//cout << "[RK Multi] Test: " << search_rk_multi({needle}, text) << endl;
+	cout << "[Aho-Corasick] Test: " << ac_count({needle}, text)[needle] << endl;
 	cout << endl;
 
 	//------------
@@ -287,37 +297,13 @@ int main(int argc, char *argv[]) {
 	cout << "[Basic] Time: " << elapsed(start) << endl << endl;
 	
 	start = chrono::high_resolution_clock::now();	
-	total = 0;
-	for (auto word : words) total += search_bm(word, text);
-	cout << "[BM] Total: " << total << endl;
-	cout << "[BM] Time: " << elapsed(start) << endl << endl;
+	auto counts = ac_count(words, text);
+	total = accumulate(counts.begin(), counts.end(), 0, [](auto acc, auto x){ return acc + x.second; });
+	cout << "[Aho-Corasick] Total: " << total << endl;
+	cout << "[Aho-Corasick] Time: " << elapsed(start) << endl << endl;
 
-	start = chrono::high_resolution_clock::now();	
-	total = 0;
-	for (auto word : words) total += search_rk(word, text);
-	cout << "[RK] Total: " << total << endl;
-	cout << "[RK] Time: " << elapsed(start) << endl << endl;
-
-	start = chrono::high_resolution_clock::now();	
-	total = search_rk_multi(words, text);
-	cout << "[RK Multi] Total: " << total << endl;
-	cout << "[RK Multi] Time: " << elapsed(start) << endl << endl;
-
-	start = chrono::high_resolution_clock::now();	
-	total = 0;
-	for (auto word : words) total += search_brute(word, text);
-	cout << "[Brute] Total: " << total << endl;
-	cout << "[Brute] Time: " << elapsed(start) << endl << endl;
-	
-	start = chrono::high_resolution_clock::now();	
-	total = 0;
-	for (auto word : words) total += search_brute2(word, text);
-	cout << "[Brute2] Total: " << total << endl;
-	cout << "[Brute2] Time: " << elapsed(start) << endl << endl;
-	
-	start = chrono::high_resolution_clock::now();	
-	total = 0;
-	for (auto word : words) total += search_kmp(word, text);
-	cout << "[KMP] Total: " << total << endl;
-	cout << "[KMP] Time: " << elapsed(start) << endl << endl;
+	for (auto word : words) {
+		auto basic_count = search_basic(word, text);
+		if (basic_count != counts[word]) printf("Word: '%s'. Basic: %d, AC: %d\n", word.c_str(), basic_count, counts[word]);
+	}
 }
