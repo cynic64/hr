@@ -156,10 +156,9 @@ private:
 				}
 
 				auto idx = c->letter - 'a';
-				auto extended_suffix = n->suffix->children[idx];
-				auto root_suffix = root->children[idx];
-				if (extended_suffix) c->suffix = extended_suffix;
-				else if (root_suffix) c->suffix = root_suffix;
+				auto s = n->suffix;
+				while (!s->children[idx] && s != root) s = s->suffix;
+				if (s->children[idx]) c->suffix = s->children[idx];
 				else c->suffix = root;
 			}
 		}
@@ -191,18 +190,12 @@ private:
 
 std::unordered_map<std::string, int> ac_count(std::vector<std::string> patterns, std::string text) {
 	Trie trie(patterns);
-	trie.print();
 	std::unordered_map<std::string, int> counts;
 
 	auto n = trie.root;
-	auto i = 0;
 	for (auto c : text) {
 		n = n->extend(c);
-		for (auto m : n->matches()) {
-			counts[m->fullname]++;
-			printf("Matched %s at idx %d\n", m->fullname.c_str(), i);
-		}
-		++i;
+		for (auto m : n->matches()) counts[m->fullname]++;
 	}
 
 	return counts;

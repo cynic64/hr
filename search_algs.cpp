@@ -267,12 +267,11 @@ int main(int argc, char *argv[]) {
 	cout << "Read " << text.size() << " Chars" << endl;
 
 	vector<string> words;
-	for (size_t i = 0; i < text.size() - 2 && words.size() < 19;) {
-		auto word = text.substr(i, 4);
-		cout << "Word: " << word << endl;
+	for (size_t i = 0; i < text.size() - 8 && words.size() < 200;) {
+		auto word = text.substr(i, (i % 3 == 0) ? 3 : 8);
 		if (find(words.begin(), words.end(), word) == words.end())
 			words.push_back(word);
-		i += 2;
+		i += 8;
 	}
 
 	cout << "[Basic] Test: " << search_basic(needle, text) << endl;
