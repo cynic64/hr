@@ -188,9 +188,9 @@ private:
 	}
 };
 
-std::unordered_map<std::string, int> ac_count(std::vector<std::string> patterns, std::string text) {
+std::unordered_map<std::string, uint64_t> ac_count(std::vector<std::string> patterns, std::string text) {
 	Trie trie(patterns);
-	std::unordered_map<std::string, int> counts;
+	std::unordered_map<std::string, uint64_t> counts;
 
 	auto n = trie.root;
 	for (auto c : text) {
