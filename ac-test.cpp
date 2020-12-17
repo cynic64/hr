@@ -1,15 +1,17 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include <vector>
+#include <string>
 
 #include "aho-corasick.hpp"
 
 int main() {
-	auto text = "abccabaaaaaaa";
-	auto counts = ac_count({"a", "ab", "bab", "bc", "bca", "c", "caa", "aa"}, text);
+	std::vector<std::string> dict = {"a", "ab", "bab", "bc", "bca", "c", "caa"};
+	ACAutomaton searcher(dict);
+	auto counts = searcher.search("abccab");
 
-	printf("Text: %s\n", text);
-	for (auto [substring, count] : counts) {
-		printf("%s occured %d times\n", substring.c_str(), count);
+	for (size_t i = 0; i < counts.size(); ++i) {
+		printf("'%s': %d\n", dict[i].c_str(), counts[i]);
 	}
 }

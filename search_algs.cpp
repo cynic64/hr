@@ -274,19 +274,6 @@ int main(int argc, char *argv[]) {
 		i += 8;
 	}
 
-	cout << "[Basic] Test: " << search_basic(needle, text) << endl;
-	/*
-	cout << "[Brute] Test: " << search_brute(needle, text) << endl;
-	cout << "[Brute2] Test: " << search_brute2(needle, text) << endl;
-	cout << "[KMP] Test: " << search_kmp(needle, text) << endl;
-	cout << "[BM] Test: " << search_bm(needle, text) << endl;
-	cout << "[BM2] Test: " << search_bm2_all(needle, text) << endl;
-	*/
-	//cout << "[RK] Test: " << search_rk(needle, text) << endl;
-	//cout << "[RK Multi] Test: " << search_rk_multi({needle}, text) << endl;
-	cout << "[Aho-Corasick] Test: " << ac_count({needle}, text)[needle] << endl;
-	cout << endl;
-
 	//------------
 
 	auto start = chrono::high_resolution_clock::now();
@@ -294,15 +281,22 @@ int main(int argc, char *argv[]) {
 	for (auto word : words) total += search_basic(word, text);
 	cout << "[Basic] Total: " << total << endl;
 	cout << "[Basic] Time: " << elapsed(start) << endl << endl;
-	
+
 	start = chrono::high_resolution_clock::now();	
-	auto counts = ac_count(words, text);
-	total = accumulate(counts.begin(), counts.end(), 0, [](auto acc, auto x){ return acc + x.second; });
+	ACAutomaton ac(words);
+	auto counts = ac.search(text.c_str());
+	total = accumulate(counts.begin(), counts.end(), 0);
 	cout << "[Aho-Corasick] Total: " << total << endl;
 	cout << "[Aho-Corasick] Time: " << elapsed(start) << endl << endl;
 
-	for (auto word : words) {
-		auto basic_count = search_basic(word, text);
-		if (basic_count != counts[word]) printf("Word: '%s'. Basic: %d, AC: %d\n", word.c_str(), basic_count, counts[word]);
+	auto agree = 0;
+	auto differ = 0;
+	for (size_t i = 0; i < words.size(); ++i) {
+		auto basic_count = search_basic(words[i], text);
+		if (basic_count != counts[i]) {
+			printf("Word: '%s'. Basic: %d, AC: %d\n", words[i].c_str(), basic_count, counts[i]);
+			differ++;
+		} else agree++;
 	}
+	printf("AC and basic agree on %d, differ on %d\n", agree, differ);
 }
